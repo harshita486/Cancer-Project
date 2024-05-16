@@ -1,0 +1,347 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report
+
+from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import LabelEncoder
+
+from sklearn.feature_selection import mutual_info_classif
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, precision_score, recall_score, f1_score,classification_report, confusion_matrix
+pip install seaborn
+# Load tab-delimited text file into a DataFrame
+df_x = pd.read_csv('data.csv')
+
+# Display the first few rows of the DataFrame
+print("First few rows of the DataFrame:")
+df_x.head()
+# Load tab-delimited text file into a DataFrame
+df_x = pd.read_csv('data.csv')
+
+# Display the first few rows of the DataFrame
+print("First few rows of the DataFrame:")
+df_x.head()
+# Load tab-delimited text file into a DataFrame
+df_x = pd.read_csv('data.csv')
+
+# Display the first few rows of the DataFrame
+print("First few rows of the DataFrame:")
+df_x.head()
+# Load tab-delimited text file into a DataFrame
+df_y = pd.read_csv('labels.csv')
+
+# Display the first few rows of the DataFrame
+print("First few rows of the DataFrame:")
+df_y.head()
+
+df = pd.merge(df_x, df_y)
+df.head()
+# Merging the dataframes
+df = pd.merge(df_x, df_y)
+df.head()
+df.shape
+df = df.drop(df.columns[0], axis=1)
+df.head()
+## Data preprocesing
+df_x=df.iloc[:,0:-1]
+df_y=df.iloc[:,-1]
+df_x.shape
+df_y.shape
+# plot the counts for Class column
+column_name = 'Class'
+
+# Get the value counts for the Class
+value_counts = df[column_name].value_counts()
+
+# Plot the value counts using seaborn
+plt.figure(figsize=(6, 4))
+sns.barplot(x=value_counts.index, y=value_counts.values)
+plt.title(f'Counts of {column_name}')
+plt.xlabel(column_name)
+plt.ylabel('Count')
+plt.xticks(rotation=0)
+plt.show()
+# Select a subset of columns if there are too many features
+columns_to_plot = ['gene_1', 'gene_2', 'gene_3', 'Class']
+
+# Use pairplot on selected columns
+sns.pairplot(df[columns_to_plot], hue='Class', markers=["o", "s", "D"])
+plt.show()
+# Choose a numeric column and a categorical column
+numeric_column = 'gene_2'
+categorical_column = 'Class'
+
+# Creating a violin plot
+plt.figure(figsize=(10, 8))
+sns.violinplot(x=categorical_column, y=numeric_column, data=df, inner='quartile')
+plt.title(f'Violin Plot of {numeric_column} by {categorical_column}')
+plt.xlabel(categorical_column)
+plt.ylabel(numeric_column)
+plt.xticks(rotation=45)
+plt.show()
+# Get counts of each category for the column
+category_counts = df[categorical_column].value_counts()
+
+# Plotting a pie chart
+plt.figure(figsize=(8, 8))
+plt.pie(category_counts, labels=category_counts.index, autopct='%1.1f%%', startangle=140, colors=sns.color_palette('pastel'))
+plt.title(f'Pie Chart of {categorical_column}')
+plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+plt.show()
+# Choose two numeric columns
+x_column = 'gene_1'
+y_column = 'gene_2'
+
+# Creating a scatter plot
+plt.figure(figsize=(8, 6))
+sns.scatterplot(data=df, x=x_column, y=y_column)
+plt.title(f'Scatter Plot between {x_column} and {y_column}')
+plt.xlabel(x_column)
+plt.ylabel(y_column)
+plt.show()
+# Missing Value Assessment
+
+# Group the DataFrame by the "class" column
+grouped_df = df.groupby('Class')
+
+# Calculate the sum of missing values in rows within each group
+missing_values_per_class = grouped_df.apply(lambda x: x.isnull().sum().sum())
+
+# Now 'missing_values_per_class' contains the sum of missing values for each class
+print("Sum of missing values for each class:")
+print(missing_values_per_class)
+
+# Count missing values in dataset
+total_missing_values = df.isna().sum().sum()
+
+# Now 'total_missing_values' contains the total number of missing values in the DataFrame
+print("Total number of missing values:", total_missing_values)
+# Assuming df_x is already loaded and preprocessed
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df_x)
+
+# Applying PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+# KMeans Clustering
+kmeans = KMeans(n_clusters=5, random_state=42)
+clusters_kmeans = kmeans.fit_predict(X_scaled)
+silhouette_kmeans = silhouette_score(X_scaled, clusters_kmeans)
+from sklearn.neighbors import NearestNeighbors
+# Agglomerative Clustering
+agglo = AgglomerativeClustering(n_clusters=5)
+clusters_agglo = agglo.fit_predict(X_scaled)
+silhouette_agglo = silhouette_score(X_scaled, clusters_agglo)
+
+# DBSCAN Clustering - parameter tuning
+# Using Nearest Neighbors to find a suitable eps
+nn = NearestNeighbors(n_neighbors=2).fit(X_scaled)
+distances, indices = nn.kneighbors(X_scaled)
+distances = np.sort(distances, axis=0)[:, 1]
+plt.figure(figsize=(5, 3))
+plt.plot(distances)
+plt.title('K-nearest Distances')
+plt.xlabel('Points sorted by distance')
+plt.ylabel('Epsilon (distance to nearest point)')
+plt.show()
+# Choose an epsilon value where the curve starts to flatten
+eps = np.percentile(distances, 90)  # Adjust this percentile based on the curve
+min_samples = 5  # Start with a small value and adjust based on the data
+
+dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+clusters_dbscan = dbscan.fit_predict(X_scaled)
+
+# Check if we have enough clusters and not all are labeled as noise
+if len(set(clusters_dbscan)) > 1 and np.any(clusters_dbscan != -1):
+    silhouette_dbscan = silhouette_score(X_scaled, clusters_dbscan)
+else:
+    silhouette_dbscan = "Not applicable"
+# Visualize the results
+fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+ax[0].scatter(X_pca[:, 0], X_pca[:, 1], c=clusters_kmeans, cmap='viridis', marker='o', alpha=0.5)
+ax[0].set_title('KMeans Clustering')
+ax[1].scatter(X_pca[:, 0], X_pca[:, 1], c=clusters_agglo, cmap='viridis', marker='o', alpha=0.5)
+ax[1].set_title('Agglomerative Clustering')
+ax[2].scatter(X_pca[:, 0], X_pca[:, 1], c=clusters_dbscan, cmap='viridis', marker='o', alpha=0.5)
+ax[2].set_title('DBSCAN Clustering')
+for a in ax:
+    a.set_xlabel('Principal Component 1')
+    a.set_ylabel('Principal Component 2')
+plt.show()
+
+# Print silhouette scores
+print("Silhouette Score for KMeans:", silhouette_kmeans)
+print("Silhouette Score for Agglomerative:", silhouette_agglo)
+print("Silhouette Score for DBSCAN:", silhouette_dbscan)
+# Encode categorical labels
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+label_encoder = LabelEncoder()
+y_encoded = label_encoder.fit_transform(df['Class'])  # Assuming 'Cancer_Type' is the column name in df_y
+labels = label_encoder.classes_
+classes = np.unique(y_encoded)
+
+print("Labels:", labels)
+print("Encoded Classes:", classes)
+# Splitting data into features and labels
+X = df.drop(columns=['Class'])
+y = y_encoded
+
+# Normalize feature data
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+# Feature selection using Mutual Information
+MI = mutual_info_classif(X_scaled, y)
+n_features = 300  # Selecting top 300 features
+top_features = np.argsort(MI)[-n_features:]
+X_selected = X_scaled[:, top_features]
+def evaluate_model(model, X, y, print_classification_report=False):
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    accuracies = []
+    f1_scores = []
+    precisions = []
+    recalls = []
+
+    last_fold_report = None
+
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
+
+        accuracies.append(accuracy_score(y_test, predictions))
+        f1_scores.append(f1_score(y_test, predictions, average='weighted'))
+        precisions.append(precision_score(y_test, predictions, average='weighted'))
+        recalls.append(recall_score(y_test, predictions, average='weighted'))
+
+        # Generate and store classification report for the last fold
+        if print_classification_report:
+            last_fold_report = classification_report(y_test, predictions, target_names=label_encoder.classes_, zero_division=0)
+
+    print(f"Results for {type(model).__name__}:")
+    print("Average Accuracy:", np.mean(accuracies))
+    print("Average F1 Score:", np.mean(f1_scores))
+    print("Average Precision:", np.mean(precisions))
+    print("Average Recall:", np.mean(recalls))
+    print("\n")
+
+    # Print the classification report for the last fold
+    if print_classification_report:
+        print("Classification Report for the Last Fold:\n")
+        print(last_fold_report)
+# Support Vector Machine Classifier
+svm_model = SVC(kernel='rbf', decision_function_shape='ovo', probability=True)
+
+# Evaluate the SVM model using the defined function, include the classification report
+evaluate_model(svm_model, X_scaled, y, print_classification_report=True)
+from sklearn.model_selection import KFold, cross_val_predict
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
+import numpy as np
+
+# Define the evaluate_model function
+def evaluate_model(model, X, y, label_encoder, print_classification_report=False):
+    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    accuracies = []
+    f1_scores = []
+    precisions = []
+    recalls = []
+    last_fold_report = None
+
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
+        accuracies.append(accuracy_score(y_test, predictions))
+        f1_scores.append(f1_score(y_test, predictions, average='weighted'))
+        precisions.append(precision_score(y_test, predictions, average='weighted'))
+        recalls.append(recall_score(y_test, predictions, average='weighted'))
+
+        if print_classification_report:
+            last_fold_report = classification_report(y_test, predictions, target_names=label_encoder.classes_)
+
+    print(f"Results for {type(model).__name__}:")
+    print("Average Accuracy:", np.mean(accuracies))
+    print("Average F1 Score:", np.mean(f1_scores))
+    print("Average Precision:", np.mean(precisions))
+    print("Average Recall:", np.mean(recalls))
+
+    if print_classification_report:
+        print(f"\nClassification Report for {type(model).__name__} on the Last Fold:")
+        print(last_fold_report)
+
+# Assuming X, y are predefined and properly preprocessed
+# label_encoder should be defined and fitted to y if needed
+
+# Initialize classifiers
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Example to run the evaluation
+evaluate_model(model, X_scaled, y, label_encoder, print_classification_report=True)
+# Initialize the KFold cross-validator
+from sklearn.model_selection import cross_val_predict
+
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+# Choose your model (Random Forest or KNN)
+model = RandomForestClassifier(n_estimators=100, random_state=42)  # or KNeighborsClassifier(n_neighbors=5)
+
+# Generate cross-validated estimates for each input data point
+predictions = cross_val_predict(model, X_scaled, y_encoded, cv=kf)
+
+# Calculate overall accuracy
+overall_accuracy = accuracy_score(y_encoded, predictions)
+
+# Print the classification report which now reflects the entire cross-validation process
+print("Classification Report:")
+print(classification_report(y_encoded, predictions, target_names=label_encoder.classes_))
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+
+# Load tab-delimited text file into a DataFrame
+df_x = pd.read_csv('/Users/harshitanamuduri/Desktop/data.csv')
+
+# Load tab-delimited text file into a DataFrame
+df_y = pd.read_csv('/Users/harshitanamuduri/Desktop/labels.csv')
+
+# Remove or encode categorical columns
+# If your DataFrame contains categorical columns, you need to encode them
+# For example, if 'Class' column is categorical, you can encode it using LabelEncoder
+label_encoder = LabelEncoder()
+df_y['Class'] = label_encoder.fit_transform(df_y['Class']) 
+
+# Assuming df_x contains your features and df_y contains your target variable
+# Remove non-numeric columns if any
+df_x_numeric = df_x.select_dtypes(include=['number'])
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df_x_numeric)
+y = df_y['Class']
+
+# Train a RandomForestClassifier model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_scaled, y)
+
+# Visualize the first decision tree in the forest
+from sklearn.tree import plot_tree
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(20, 10))
+plot_tree(model.estimators_[0], feature_names=df_x_numeric.columns.tolist(), class_names=label_encoder.classes_.tolist(), filled=True)
+plt.show()
